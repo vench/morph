@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,53 +64,55 @@ func Parse(word string) (words []string, norms []string, tags []string) {
 	return words, norms, tags
 }
 
-func init() {
-	dir := dataPath()
+func Init() error {
+	dir,err := dataPath()
+	if err != nil {
+		return err
+	}
 	prefixesPath := filepath.Join(dir, "paradigm-prefixes.json")
 	suffixesPath := filepath.Join(dir, "suffixes.json")
 	tagsPath := filepath.Join(dir, "gramtab-opencorpora-int.json")
 	paradigmsPath := filepath.Join(dir, "paradigms.array")
 	dawgPath := filepath.Join(dir, "words.dawg")
 
-	var err error
-
 	tags, err = loadStringArray(tagsPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	prefixes, err = loadStringArray(prefixesPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			panic(err)
+			return err
 		}
 		prefixes = []string{"", "по", "наи"}
 	}
 
 	suffixes, err = loadStringArray(suffixesPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if err := loadParadigms(paradigmsPath); err != nil {
-		panic(err)
+		return err
 	}
 
 	d, err = newDAWG(dawgPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return err
 }
 
-func dataPath() string {
+func dataPath() (string, error) {
 	cmd := exec.Command("python", "-c", "import pymorphy2_dicts_ru as p; print(p.__path__[0])")
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
-		panic("pymorphy2_dicts_ru is not installed")
+		return ``, errors.New("pymorphy2_dicts_ru is not installed")
 	}
 	dir := strings.TrimRight(buf.String(), "\r\n")
-	return filepath.Join(dir, "data")
+	return filepath.Join(dir, "data"), nil
 }
 
 func loadStringArray(fn string) ([]string, error) {

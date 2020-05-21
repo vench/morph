@@ -61,6 +61,10 @@ var testCases = []struct {
 }
 
 func TestParse(t *testing.T) {
+	err := Init()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range testCases {
 		words, norms, tags := Parse(tc.word)
 		if !reflect.DeepEqual(words, tc.want[0]) {
